@@ -31,4 +31,6 @@ rm -rf /opt/piratebox
 
 echo "BiblioBox is now uninstalled!"
 
+reboot
+
 exit 0
