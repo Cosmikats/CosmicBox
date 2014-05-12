@@ -24,6 +24,11 @@ umount /opt/piratebox/share
 # remove piratebox files
 rm -rf /opt/piratebox
 
+# uninstall hostapd
+[ ! -L /usr/sbin/hostapd ] || rm -f /usr/sbin/hostapd
+[ ! -f /usr/sbin/hostapd.edimax ] || rm -f /usr/sbin/hostapd.edimax
+[ -f /usr/sbin/hostapd.original ] && mv /usr/sbin/hostapd.original /usr/sbin/hostapd
+
 echo "BiblioBox is now uninstalled!"
 
 exit 0
