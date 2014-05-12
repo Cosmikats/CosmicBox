@@ -86,7 +86,6 @@ fi
 
 # download library-core files
 echo -n "downloading LibraryBox-Dev archive..."
-[ ! -f master.zip ] || mv master.zip master.zip.old
 
 wget https://github.com/LibraryBox-Dev/LibraryBox-core/archive/master.zip
 [ 0 -ne $? ] && die "ERROR - cannot download LibraryBox files"
@@ -191,22 +190,6 @@ fi
 # try to mount usb device
 mount $usb
 [ 0 -ne $? ] && die "ERROR - cannot mount $usb"
-
-if [ -d /opt/piratebox/share/Content ]; then
-    mv /opt/piratebox/share/Content /opt/piratebox/share/Content.original
-fi
-cp -Rf /opt/piratebox/www_content /opt/piratebox/share/Content
-rm -rf /opt/piratebox/www_content
-
-[ -d /opt/piratebox/share/Shared ] || mkdir /opt/piratebox/share/Shared
-[ -d /opt/piratebox/share/Shared/audio ] || mkdir /opt/piratebox/share/Shared/audio
-[ -d /opt/piratebox/share/Shared/software ] || mkdir /opt/piratebox/share/Shared/software
-[ -d /opt/piratebox/share/Shared/text ] || mkdir /opt/piratebox/share/Shared/text
-[ -d /opt/piratebox/share/Shared/video ] || mkdir /opt/piratebox/share/Shared/video
-
-# remount usb device
-umount /opt/piratebox/share
-mount $usb
 
 # do final stuff
 [ -L /opt/piratebox/init.d/piratebox ] || ln -sf /opt/piratebox/init.d/piratebox /etc/init.d/piratebox
