@@ -86,6 +86,7 @@ fi
 
 # download library-core files
 echo -n "downloading LibraryBox-Dev archive..."
+[ ! -f master.zip ] || mv master.zip master.zip.old
 
 wget https://github.com/LibraryBox-Dev/LibraryBox-core/archive/master.zip
 [ 0 -ne $? ] && die "ERROR - cannot download LibraryBox files"
@@ -145,73 +146,67 @@ chown -R nobody:nogroup /opt/piratebox/www
 #---------------------------------
 # prepare usb stick content
 #---------------------------------
-echo -n "do you want to prepare a new usb stick that will contain librarybox files? (y/n) ?"
-read answer
-while [ "$answer" != "y" -a "$answer" != "n" ]; do
-    echo -n "do you want to prepare a new usb stick that will contain librarybox files? (y/n) ?"
-    read answer
+# we need to know the device
+echo -n "insert the usb stick and press Enter: "
+read foo
+
+# we will loop until valid usb device is entered
+usb=""
+while [ -z "$usb" ]; do
+
+    # display disks to operator
+    fdisk -l
+
+    # ask about usb device
+    echo -n "what is the usb device that will contain librarybox files (eg. /dev/sdaX) ?: "
+    read usb
+
+    # try to read information on device
+    blkid $usb
+    [ 0 == $? ] || usb=""
+
 done
 
-if [ "$answer" == "y" ]; then
+# read usb device uuid
+UUID=$(blkid $usb | grep -o 'UUID="[^"]\+"' | sed 's#^UUID="\([^"]\+\)"$#\1#')
+[ -n "$UUID" ] || die "ERROR - cannot get usb device $usb UUID"
 
-    # we need to know the device
-    echo -n "insert the usb stick and press Enter: "
-    read foo
+# read usb device type
+TYPE=$(blkid $usb | grep -o 'TYPE="[^"]\+"' | sed 's#^TYPE="\([^"]\+\)"$#\1#')
+[ -n "$TYPE" ] || die "ERROR - cannot get usb device $usb TYPE"
 
-    # we will loop until valid usb device is entered
-    usb=""
-    while [ -z "$usb" ]; do
+# check UUID is not configured in /etc/fstag
+grep "$UUID" /etc/fstab >> /dev/null
+if [ 0  -ne $? ]; then
 
-        # display disks to operator
-        fdisk -l
-
-        # ask about usb device
-        echo -n "what is the usb device that will contain librarybox files (eg. /dev/sdaX) ?: "
-        read usb
-
-        # try to read information on device
-        blkid $usb
-        [ 0 == $? ] || usb=""
-
-    done
-
-    # read usb device uuid
-    UUID=$(blkid $usb | grep -o 'UUID="[^"]\+"' | sed 's#^UUID="\([^"]\+\)"$#\1#')
-    [ -n "$UUID" ] || die "ERROR - cannot get usb device $usb UUID"
-
-    # read usb device type
-    TYPE=$(blkid $usb | grep -o 'TYPE="[^"]\+"' | sed 's#^TYPE="\([^"]\+\)"$#\1#')
-    [ -n "$TYPE" ] || die "ERROR - cannot get usb device $usb TYPE"
-
-    # update /etc/fstab
-    grep "$UUID" /etc/fstab >> /dev/null
-    if [ 0  -ne $? ]; then
-
-        echo "# automatically mount usb device on /opt/piratebox/share" >> /etc/fstab
+    # add new usb device
+    echo "# piratebox: automatically mount usb device on /opt/piratebox/share" >> /etc/fstab
+    if [ "vfat" = "$TYPE" ]; then
+        echo "UUID=$UUID    /opt/piratebox/share    $TYPE    rw,user,auto,gid=65534,uid=65534,iocharset=utf8    0   0" >> /etc/fstab
+    else
         echo "UUID=$UUID    /opt/piratebox/share    $TYPE    rw,user,auto,gid=65534,uid=65534    0   0" >> /etc/fstab
     fi
-
-    # try to mount usb device
-    mount $usb
-    [ 0 -ne $? ] && die "ERROR - cannot mount $usb"
-
-    if [ -d /opt/piratebox/share/content ]; then
-        mv /opt/piratebox/share/content /opt/piratebox/share/content.original
-    fi
-    cp -Rf /opt/piratebox/www_content /opt/piratebox/share/content
-    rm -rf /opt/piratebox/www_content
-
-    [ -d /opt/piratebox/share/Shared ] || mkdir /opt/piratebox/share/Shared
-    [ -d /opt/piratebox/share/Shared/audio ] || mkdir /opt/piratebox/share/Shared/audio
-    [ -d /opt/piratebox/share/Shared/software ] || mkdir /opt/piratebox/share/Shared/software
-    [ -d /opt/piratebox/share/Shared/text ] || mkdir /opt/piratebox/share/Shared/text
-    [ -d /opt/piratebox/share/Shared/video ] || mkdir /opt/piratebox/share/Shared/video
-
-    # remount usb device
-    umount /opt/piratebox/share
-    mount $usb
-
 fi
+
+# try to mount usb device
+mount $usb
+[ 0 -ne $? ] && die "ERROR - cannot mount $usb"
+
+if [ -d /opt/piratebox/share/Content ]; then
+    mv /opt/piratebox/share/Content /opt/piratebox/share/Content.original
+fi
+cp -Rf /opt/piratebox/www_content /opt/piratebox/share/Content
+rm -rf /opt/piratebox/www_content
+
+[ -d /opt/piratebox/share/Shared ] || mkdir /opt/piratebox/share/Shared
+[ -d /opt/piratebox/share/Shared/audio ] || mkdir /opt/piratebox/share/Shared/audio
+[ -d /opt/piratebox/share/Shared/software ] || mkdir /opt/piratebox/share/Shared/software
+[ -d /opt/piratebox/share/Shared/text ] || mkdir /opt/piratebox/share/Shared/text
+[ -d /opt/piratebox/share/Shared/video ] || mkdir /opt/piratebox/share/Shared/video
+
+# remount usb device
+umount /opt/piratebox/share
+mount $usb
 
 # do final stuff
 [ -L /opt/piratebox/init.d/piratebox ] || ln -sf /opt/piratebox/init.d/piratebox /etc/init.d/piratebox
@@ -219,4 +214,3 @@ update-rc.d piratebox defaults
 /etc/init.d/piratebox start
 
 exit 0
-
